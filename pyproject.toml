@@ -1,30 +1,39 @@
 [project]
 name = "helena"
 version = "0.1.0"
-description = "Add your description here"
+description = "A cross-platform desktop productivity app"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = [
-    "pyside6>=6.11.1",
-]
+dependencies = ["pyside6>=6.11.1"]
+
+# Lets you launch with `uv run helena`. The value is "module:function".
+[project.scripts]
+helena = "helena.app:run"
+
+# A build backend is required so the package can be installed into the venv.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Tell hatchling where the importable package lives (src/ layout).
+[tool.hatch.build.targets.wheel]
+packages = ["src/helena"]
 
 [dependency-groups]
-dev = [
-    "ruff>=0.15.18",
-]
+dev = ["ruff>=0.15.18"]
 
 [tool.ruff.lint]
 select = [
-    # pycodestyle
-    "E",
-    # Pyflakes
-    "F",
-    # pyupgrade
-    "UP",
-    # flake8-bugbear
-    "B",
-    # flake8-simplify
-    "SIM",
-    # isort
-    "I",
+  # pycodestyle
+  "E",
+  # Pyflakes
+  "F",
+  # pyupgrade
+  "UP",
+  # flake8-bugbear
+  "B",
+  # flake8-simplify
+  "SIM",
+  # isort
+  "I",
 ]
