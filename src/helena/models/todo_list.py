@@ -38,29 +38,38 @@ class Task:
     Attributes:
         title: The human-readable text of the task.
         completed: Whether the task is done (drives the checkbox in the UI).
+        body: Optional free-text notes/description shown in the detail panel.
         id: Stable unique identifier (auto-generated if not supplied).
     """
 
     title: str
     completed: bool = False
+    body: str = ""
     # ``default_factory`` calls ``new_id()`` for *each* new Task. (Using a plain
     # default would share one id across every instance — a classic bug.)
     id: str = field(default_factory=new_id)
 
     def to_dict(self) -> dict:
         """Convert this Task into plain, JSON-serializable types."""
-        return {"id": self.id, "title": self.title, "completed": self.completed}
+        return {
+            "id": self.id,
+            "title": self.title,
+            "completed": self.completed,
+            "body": self.body,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> Task:
         """Rebuild a Task from a dict previously produced by ``to_dict``.
 
         We use ``dict.get`` with defaults so partial / older save files still
-        load instead of raising — cheap forward/backward compatibility.
+        load instead of raising — cheap forward/backward compatibility. A file
+        written before ``body`` existed simply loads with an empty body.
         """
         return cls(
             title=data.get("title", ""),
             completed=data.get("completed", False),
+            body=data.get("body", ""),
             id=data.get("id", new_id()),
         )
 
