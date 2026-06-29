@@ -18,5 +18,18 @@ A cross-platform desktop productivity app built with Python and PySide6.
 
 ## Setup
 
+Install dependencies into a managed virtual environment:
+
 ```bash
 uv sync
+```
+
+## Run
+
+```bash
+uv run helena
+```
+
+## Documentation
+
+- [Design log](docs/design-log.md) — why key decisions were made
