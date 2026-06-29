@@ -1,7 +1,5 @@
 """Entry point for ``python -m helena``."""
 
-from __future__ import annotations
-
 import sys
 
 from helena.app import run
