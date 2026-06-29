@@ -67,6 +67,8 @@ A suspected `SyntaxError` in `storage.py`'s `except` clause turned out not to be
 - Allow users to switch between dark and light mode
 - Add custom app icon(s)
 - Implement periodic auto-saves / backups
+- Implement save shortcut
 - Allow users to set the data storage location
 - Fix the cut off "Add a task and press Enter" text
 - Consider unifying add list and add task behavior
+- Think about testing
