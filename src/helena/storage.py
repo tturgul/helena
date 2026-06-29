@@ -58,6 +58,10 @@ def load(path: Path | None = None) -> list[TodoList]:
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+    # Two exception types listed *without* wrapping parentheses: that syntax is
+    # valid on Python 3.14+ (PEP 758), which this project requires — it is NOT a
+    # mistake, and ruff normalizes to this form. OSError covers read failures;
+    # JSONDecodeError covers malformed JSON.
     except OSError, json.JSONDecodeError:
         # Corrupt or unreadable file: start fresh rather than crash. A later
         # iteration could back up the bad file and warn the user.

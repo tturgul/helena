@@ -72,6 +72,8 @@ class MainWindow(QMainWindow):
         # visible entry point is the gear button inside each list's input row.
         settings_action = QAction("Settings…", self)
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
+        # PreferencesRole lets macOS move this into its standard application
+        # menu; on other platforms it's a harmless no-op.
         settings_action.setMenuRole(QAction.MenuRole.PreferencesRole)
         settings_action.triggered.connect(self._on_open_settings)
         self.addAction(settings_action)

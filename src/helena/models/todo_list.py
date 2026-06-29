@@ -16,6 +16,11 @@ The model is a small tree:
 Order matters: a Task's index in ``TodoList.tasks`` *is* its sort order, and a
 TodoList's index in the saved file *is* its tab order. We never store an
 explicit "order" integer — list ordering already carries that information.
+
+Note on annotations: the classmethods are annotated to return their own class
+(e.g. ``-> Task``). On Python 3.14+ this needs no ``from __future__ import
+annotations``, because annotations are evaluated lazily by default (PEP 649),
+so the forward reference to the not-yet-fully-defined class is fine.
 """
 
 import uuid
