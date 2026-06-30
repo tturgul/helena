@@ -1,6 +1,6 @@
 # Design Log
 
-Last updated: 29.06.2026
+Last updated: 30.06.2026
 
 ### Project Summary
 
@@ -72,3 +72,31 @@ A suspected `SyntaxError` in `storage.py`'s `except` clause turned out not to be
 - Fix the cut off "Add a task and press Enter" text
 - Consider unifying add list and add task behavior
 - Think about testing
+
+### 30.06.2026 — Iteration 3: Theming, Reliability & Polish
+
+**Context**  
+Iteration 2 delivered a richer todo UI. This iteration focuses on appearance control, data safety, and rough-edge polish: a light/dark/system theme, a real app icon, automatic saving with backups and a save shortcut, a configurable storage location, a unified create-list/create-task interaction, and a couple of visibility fixes.
+
+**Decisions**
+- **Theme (System / Light / Dark)**: themes are driven by installing an explicit `QPalette` on the application, not by Qt's colour-scheme hint alone (which only partially recolours on some platforms, leaving the UI half-themed). Forced Light/Dark *also* set `styleHints().setColorScheme(...)` so the chosen palette "sticks" even when it contradicts the OS appearance. "System" resolves from the OS scheme captured **before** any override is applied — reading it right after clearing an override returns a stale value — and then tracks later OS changes via the `colorSchemeChanged` signal. After any palette change, every widget is re-polished so stylesheet `palette(...)` references re-resolve (Qt caches them at polish time, which is why the task list otherwise stayed dark when switching to light).
+- **Fusion style**: the app forces Qt's cross-platform "Fusion" style so the palette fully drives appearance and the result is identical on every OS.
+- **App icon**: a bundled SVG set via `setWindowIcon` (placeholder artwork, easily swapped).
+- **Autosave + backups**: edits set a dirty flag; a `QTimer` flushes only when something changed. Writes are atomic (temp file + `os.replace`), so a crash can't corrupt the file. `Ctrl+S` and closing the window save immediately and write a rotating, timestamped backup pruned to the newest N; routine autosaves skip backups to avoid flooding the folder. Autosave on/off, interval, and backup count are user preferences.
+- **Save feedback**: a manual save flashes a small, self-fading "toast" label rather than adding a permanent status bar.
+- **Configurable data location**: Settings gains a data-folder field (+ Browse). A new folder is validated by creating it (with parents) and writing a probe file; on change the user is asked whether to move existing data, with a guard when the destination already holds Helena data. Moves bring the `backups/` history along and tidy up the emptied old location — *empty-only*, including the nested organization folder under the OS data root, but never the shared root and never a folder still holding unrelated files.
+- **Unified create flows**: list creation and renaming now use a small modal `AddListDialog` (replacing `QInputDialog`), mirroring `AddTaskDialog`: both gate OK on a non-empty title and confirm on Enter.
+- **Checkbox legibility**: selected task rows keep the *normal* text colour (`palette(text)`) instead of the highlighted-text colour, so the check mark stays visible against its (Base-coloured) indicator box in both themes.
+
+**Why**  
+Palette-first theming is the only reliable way to get a complete, identical recolour across Windows/macOS/Linux and Qt versions; partial approaches left parts of the UI unthemed, so the effort here paid off. Atomic writes plus rotating backups make loss from a crash or a bad edit recoverable, and empty-only cleanup avoids leaving stray folders behind without ever risking a user's unrelated files. Unifying the create flows removes an inconsistency (a polished task dialog next to a bare list prompt).
+
+**Notes**  
+- Qt's `AppDataLocation` nests as `<shared data root>/<Org>/<App>` (e.g. `~/.local/share/Helena/Helena`), which is why the cleanup also prunes the now-empty organization folder — bounded so it can never climb to the shared root.
+- `styleHints().colorScheme()` reports the *effective* scheme, so it must be sampled before any override is applied; otherwise "System" detection stays stale until restart.
+
+**Next Steps**
+- Add automated tests (model, storage, and settings round-trips)
+- Package and distribute per platform
+- Explore rendering task bodies (notes) as Markdown instead of plain text
+- Allow users to pick accent color in settings

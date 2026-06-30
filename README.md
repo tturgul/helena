@@ -2,6 +2,19 @@
 
 A cross-platform desktop productivity app built with Python and PySide6.
 
+## About this project
+
+Helena is a learning project. It was built with the help of AI using a
+**problem-based learning** approach: each feature started as a concrete problem,
+and the solution was reasoned through and explained along the way. The aim was
+to learn how to design and build desktop user interfaces in Python with
+**PySide6**.
+
+The interface is written entirely **in code** — there are no Qt Designer
+drag-and-drop `.ui` files. Every widget, layout, signal, and style is defined in
+Python, which keeps the whole UI visible in plain diffs and makes the underlying
+Qt concepts explicit.
+
 ## Features
 
 **Lists**
@@ -11,7 +24,7 @@ A cross-platform desktop productivity app built with Python and PySide6.
 - Reorder lists by dragging tabs horizontally
 
 **Tasks**
-- Add tasks, mark them complete with a checkbox, and remove them
+- Add a task (title + optional notes) from a dialog, tick it complete, or remove it
 - Reorder tasks by dragging them vertically
 - Each task has a **title** and free-text **notes**, edited in a detail panel
   beside the list — select a task to edit it, or double-click it to jump
@@ -19,11 +32,20 @@ A cross-platform desktop productivity app built with Python and PySide6.
 - Tasks are shown as outlined cards for clearer visual separation
 
 **Settings**
-- Adjustable UI font size, remembered between runs
+- **Theme**: System (follows the OS), Light, or Dark — applied live
+- Adjustable UI font size
+- Configurable autosave (on/off and interval) and number of backups to keep
+- Configurable data-storage location
+- Preferences are remembered between runs
 - Open settings with the gear button at the bottom of a list, or press `Ctrl+,`
 
 **Data**
-- Saved to JSON automatically on close and reloaded on start
+- Autosaves while you work and on close; save immediately with `Ctrl+S`
+- Timestamped backups (written on each manual save and on close) let you recover
+  from a bad edit
+- Atomic writes, so a crash can't corrupt the data file
+- Stored as human-readable JSON in a configurable location; existing data can be
+  moved when you change the location
 
 ## Requirements
 
@@ -36,14 +58,3 @@ Install dependencies into a managed virtual environment:
 
 ```bash
 uv sync
-```
-
-## Run
-
-```bash
-uv run helena
-```
-
-## Documentation
-
-- [Design log](docs/design-log.md) — why key decisions were made
