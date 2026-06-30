@@ -15,7 +15,13 @@ booleans as the strings "true"/"false") on some platforms, so we coerce and
 fall back to a sensible default rather than trusting the stored type. Numeric
 preferences are clamped to a valid range so a corrupt or hand-edited value can
 never put the app into an unusable state.
+
+QSettings returns values as a dynamically-typed object (the stubs type it as
+``object``), so the integer getters annotate the raw value as ``Any`` before
+coercing it — this reflects reality and keeps static type checkers happy.
 """
+
+from typing import Any
 
 from PySide6.QtCore import QSettings
 
@@ -74,9 +80,10 @@ def get_font_size() -> int:
     The stored value is coerced to int and clamped to [MIN, MAX] so a missing,
     corrupt, or hand-edited value can't produce an unusable interface.
     """
-    raw = QSettings().value(FONT_SIZE_KEY, DEFAULT_FONT_SIZE)
+    raw: Any = QSettings().value(FONT_SIZE_KEY, DEFAULT_FONT_SIZE)
     try:
         size = int(raw)
+    # ``except A, B`` without parentheses is valid on Python 3.14+ (PEP 758).
     except TypeError, ValueError:
         return DEFAULT_FONT_SIZE
     return max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, size))
@@ -136,9 +143,10 @@ def set_autosave_enabled(enabled: bool) -> None:
 
 def get_autosave_interval_minutes() -> int:
     """Return the autosave interval in minutes, clamped to a sane range."""
-    raw = QSettings().value(AUTOSAVE_INTERVAL_KEY, DEFAULT_AUTOSAVE_INTERVAL)
+    raw: Any = QSettings().value(AUTOSAVE_INTERVAL_KEY, DEFAULT_AUTOSAVE_INTERVAL)
     try:
         minutes = int(raw)
+    # ``except A, B`` without parentheses is valid on Python 3.14+ (PEP 758).
     except TypeError, ValueError:
         return DEFAULT_AUTOSAVE_INTERVAL
     return max(MIN_AUTOSAVE_INTERVAL, min(MAX_AUTOSAVE_INTERVAL, minutes))
@@ -151,9 +159,10 @@ def set_autosave_interval_minutes(minutes: int) -> None:
 
 def get_backup_count() -> int:
     """Return how many timestamped backups to keep, clamped to a sane range."""
-    raw = QSettings().value(BACKUP_COUNT_KEY, DEFAULT_BACKUP_COUNT)
+    raw: Any = QSettings().value(BACKUP_COUNT_KEY, DEFAULT_BACKUP_COUNT)
     try:
         count = int(raw)
+    # ``except A, B`` without parentheses is valid on Python 3.14+ (PEP 758).
     except TypeError, ValueError:
         return DEFAULT_BACKUP_COUNT
     return max(MIN_BACKUP_COUNT, min(MAX_BACKUP_COUNT, count))
