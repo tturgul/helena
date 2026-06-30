@@ -99,4 +99,5 @@ Palette-first theming is the only reliable way to get a complete, identical reco
 - Add automated tests (model, storage, and settings round-trips)
 - Package and distribute per platform
 - Explore rendering task bodies (notes) as Markdown instead of plain text
-- Allow users to pick accent color in settings
+- Allow users to pick accent color in the settings
+- Consider a reset to defaults option in the settings
