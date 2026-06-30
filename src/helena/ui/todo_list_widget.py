@@ -5,10 +5,12 @@ Core PySide6 ideas used here:
 * **Composite widgets & layouts**: we subclass ``QWidget`` and arrange children
   with layouts, which position and resize them for us.
 * **QSplitter**: a draggable divider between two panes. The left pane is the task
-  list (+ add row); the right pane is a detail editor for the selected task.
+  list plus a control row; the right pane is a detail editor for the selected
+  task.
 * **Signals & slots**: a widget emits a signal; we connect it to a method. We
-  also define our *own* signal, ``settings_requested``, so this widget can ask
-  the window to open Settings without knowing anything about the dialog itself.
+  define our own signals too: ``settings_requested`` (asks the window to open
+  Settings) and ``content_changed`` (tells the window the data is now dirty and
+  due for an autosave), so this widget stays unaware of how either is handled.
 * **QListWidget item data roles**: each row is a ``QListWidgetItem``. Beyond its
   visible text (the title) we stash extra data on it under *roles*: the task id
   at ``UserRole`` and the body text at ``UserRole + 1``.
@@ -21,6 +23,8 @@ Core PySide6 ideas used here:
 Design note: this widget is the *live editing surface*; the dataclass model is
 the *persistence format*. ``load_from`` converts model -> widget and ``to_model``
 converts widget -> model, capturing the current drag-reordered order on save.
+New tasks are created through a small modal dialog (``AddTaskDialog``); existing
+tasks are edited inline in the right-hand detail panel.
 """
 
 import uuid
@@ -30,6 +34,7 @@ from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -43,6 +48,7 @@ from PySide6.QtWidgets import (
 )
 
 from helena.models import Task, TodoList
+from helena.ui.add_task_dialog import AddTaskDialog
 
 # Custom roles for data we attach to each row. UserRole is the first slot Qt
 # reserves for application data; we use the next one for the body text.
@@ -65,6 +71,11 @@ class TodoListWidget(QWidget):
     # to it and opens the Settings dialog; this widget stays unaware of how.
     settings_requested = Signal()
 
+    # Emitted whenever the list's contents change (task added/removed/reordered,
+    # checkbox toggled, or title/notes edited). The window uses it to mark the
+    # document dirty so the next autosave flushes it.
+    content_changed = Signal()
+
     def __init__(self, parent: QWidget | None = None) -> None:
         # Always call the base-class __init__ first so Qt initializes the widget.
         super().__init__(parent)
@@ -82,12 +93,20 @@ class TodoListWidget(QWidget):
         # InternalMove == let the user drag rows to reorder them within this
         # list. Qt handles the entire drag-and-drop interaction for us.
         self.list_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        # Titles are edited in the detail panel now, not inline, so we turn off
-        # the list's built-in edit triggers.
+        # Titles are edited in the detail panel, not inline, so we turn off the
+        # list's built-in edit triggers.
         self.list_widget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
-        # Visual separation: give each row a card-like outline. ``palette(...)``
-        # pulls colours from the active system theme (works in light and dark).
+        # Give each row a card-like outline. ``palette(...)`` pulls colours from
+        # the active theme, so it adapts to light and dark automatically.
+        #
+        # Selected rows intentionally keep the *normal* text colour
+        # (``palette(text)``), not the usual "highlighted text" colour. The
+        # checkbox tick is painted in the text colour, and the small check
+        # indicator box keeps its normal (Base) background even when the row is
+        # selected — so a highlighted-text-coloured tick would sit on a
+        # same-toned box and become nearly invisible. Using the normal text
+        # colour keeps the tick (and the label) legible in both light and dark.
         self.list_widget.setStyleSheet(
             """
             QListWidget::item {
@@ -99,15 +118,23 @@ class TodoListWidget(QWidget):
             QListWidget::item:selected {
                 border: 1px solid palette(highlight);
                 background-color: palette(highlight);
-                color: palette(highlighted-text);
+                color: palette(text);
             }
             """
         )
 
-        # --- The "add task" input row ------------------------------------
-        self.input = QLineEdit()
-        self.input.setPlaceholderText("Add a task and press Enter…")
-        self.add_button = QPushButton("Add")
+        # The list's underlying model emits one of these signals for every kind
+        # of content change (insert/remove/move rows, or edit an item's data),
+        # so funnelling them all into ``content_changed`` captures everything in
+        # one place — including title/notes edits, which write back as item data.
+        model = self.list_widget.model()
+        model.rowsInserted.connect(self.content_changed)
+        model.rowsRemoved.connect(self.content_changed)
+        model.rowsMoved.connect(self.content_changed)
+        model.dataChanged.connect(self.content_changed)
+
+        # --- The control row (add / remove / settings) -------------------
+        self.add_button = QPushButton("Add task")
         self.remove_button = QPushButton("Remove")
 
         # A gear button at the end of the row opens Settings. It's a QPushButton
@@ -120,19 +147,18 @@ class TodoListWidget(QWidget):
         self.settings_button.clicked.connect(self.settings_requested)
         self._sync_settings_button()
 
-        input_row = QHBoxLayout()
-        input_row.addWidget(self.input)
-        input_row.addWidget(self.add_button)
-        input_row.addWidget(self.remove_button)
-        input_row.addSpacing(8)  # small gap: task controls vs. app control
-        input_row.addWidget(self.settings_button)
+        controls_row = QHBoxLayout()
+        controls_row.addWidget(self.add_button)
+        controls_row.addWidget(self.remove_button)
+        controls_row.addStretch(1)  # push the gear to the right edge
+        controls_row.addWidget(self.settings_button)
 
-        # Left pane = list stacked on top of the input row.
+        # Left pane = list stacked on top of the control row.
         left_pane = QWidget()
         left_layout = QVBoxLayout(left_pane)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.addWidget(self.list_widget)
-        left_layout.addLayout(input_row)
+        left_layout.addLayout(controls_row)
 
         # --- The detail editor (right pane) ------------------------------
         self.title_edit = QLineEdit()
@@ -163,7 +189,6 @@ class TodoListWidget(QWidget):
 
         # --- Wire signals to slots ---------------------------------------
         self.add_button.clicked.connect(self._on_add_clicked)
-        self.input.returnPressed.connect(self._on_add_clicked)
         self.remove_button.clicked.connect(self._on_remove_clicked)
         # Selecting a different row loads it into the detail editor.
         self.list_widget.currentItemChanged.connect(self._on_current_item_changed)
@@ -196,17 +221,15 @@ class TodoListWidget(QWidget):
         self.settings_button.setIconSize(QSize(side, side))
 
     # ------------------------------------------------------------------
-    # Slots: list / input actions
+    # Slots: list / control actions
     # ------------------------------------------------------------------
     def _on_add_clicked(self) -> None:
-        """Create a new task from the text currently in the input box."""
-        title = self.input.text().strip()
-        if not title:
-            return  # Ignore empty / whitespace-only input.
-        self.add_task(Task(title=title))
-        self.input.clear()
-        # Select the freshly added task so its (empty) detail panel opens.
-        self.list_widget.setCurrentRow(self.list_widget.count() - 1)
+        """Open the Add-task dialog and append the new task if confirmed."""
+        dialog = AddTaskDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.add_task(Task(title=dialog.title(), body=dialog.body()))
+            # Select the freshly added task so its detail panel opens.
+            self.list_widget.setCurrentRow(self.list_widget.count() - 1)
 
     def _on_remove_clicked(self) -> None:
         """Remove the currently selected task, if any."""
@@ -226,7 +249,7 @@ class TodoListWidget(QWidget):
         self._load_detail(current)
 
     def _on_item_double_clicked(self, item: QListWidgetItem) -> None:
-        """Double-click now focuses the notes editor for quick note-taking."""
+        """Double-click focuses the notes editor for quick note-taking."""
         self.body_edit.setFocus()
 
     def _load_detail(self, item: QListWidgetItem | None) -> None:

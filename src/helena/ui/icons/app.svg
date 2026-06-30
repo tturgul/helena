@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Placeholder app icon. Replace this whole file with your own square
+       artwork (transparent-background PNG ≥256×256, or SVG) to rebrand. -->
+  <rect x="16" y="16" width="224" height="224" rx="48" ry="48" fill="#4f46e5"/>
+  <!-- Letter "H" monogram. -->
+  <path d="M88 72 V184 M168 72 V184 M88 128 H168"
+        stroke="#ffffff" stroke-width="24" stroke-linecap="round" fill="none"/>
+</svg>
